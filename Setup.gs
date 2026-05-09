@@ -368,18 +368,18 @@ function _createTestPresentation(oldSS) {
   const slide1 = pres.getSlides()[0];
   _clearSlide(slide1);
   _insertChartFromSheet(slide1, oldSS, '月別売上', PADDING, LABEL_TOP + LABEL_H, W - PADDING * 2, H - LABEL_H - PADDING - LABEL_TOP);
-  _addSlideLabel(slide1, '月別売上｜旧スプレッドシート参照中', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
+  _addSlideLabel(slide1, '月別売上', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
 
   // スライド 2: カテゴリ別（円グラフ）
   const slide2 = pres.appendSlide(SlidesApp.PredefinedLayout.BLANK);
   const pieW = W * 0.6;
   _insertChartFromSheet(slide2, oldSS, 'カテゴリ別', (W - pieW) / 2, LABEL_TOP + LABEL_H, pieW, H - LABEL_H - PADDING - LABEL_TOP);
-  _addSlideLabel(slide2, 'カテゴリ別売上｜旧スプレッドシート参照中', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
+  _addSlideLabel(slide2, 'カテゴリ別売上', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
 
   // スライド 3: 月別達成率（折れ線グラフ）
   const slide3 = pres.appendSlide(SlidesApp.PredefinedLayout.BLANK);
   _insertChartFromSheet(slide3, oldSS, '月別達成率', PADDING, LABEL_TOP + LABEL_H, W - PADDING * 2, H - LABEL_H - PADDING - LABEL_TOP);
-  _addSlideLabel(slide3, '月別目標達成率｜旧スプレッドシート参照中', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
+  _addSlideLabel(slide3, '月別目標達成率', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
 
   return pres;
 }
