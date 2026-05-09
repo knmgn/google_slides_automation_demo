@@ -6,6 +6,12 @@ spreadsheet ID to a new one.
 
 ---
 
+## Demo
+
+https://github.com/knmgn/google_slides_automation_demo/raw/refs/heads/main/demo.mp4
+
+---
+
 ## Use Cases
 
 - You copied a spreadsheet to create a new environment (production / staging /
