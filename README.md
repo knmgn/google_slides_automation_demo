@@ -1,143 +1,159 @@
-# Googleスライド チャート参照先一括置換スクリプト
+# Google Slides — Bulk Chart Source Replacer
 
-Googleスライドに埋め込まれたリンク済みチャートの参照先スプレッドシートを、
-旧スプレッドシートIDから新スプレッドシートIDへ**一括置換**する Google Apps Script (GAS) です。
-
----
-
-## ユースケース
-
-- スプレッドシートをコピーして別環境（本番 / 検証 / 年度切り替えなど）を作成したとき、
-  既存のスライドが参照するスプレッドシートを新しいコピーへ切り替えたい
-- 組織移行や権限変更などで、参照元スプレッドシートのIDが変わってしまったとき
+A Google Apps Script that batch-replaces the source spreadsheet of all linked
+Sheets charts in a Google Slides presentation, redirecting them from an old
+spreadsheet ID to a new one.
 
 ---
 
-## ファイル構成
+## Use Cases
+
+- You copied a spreadsheet to create a new environment (production / staging /
+  new fiscal year) and want your existing presentation to reference the new copy
+  instead of the original.
+- The source spreadsheet ID changed due to an org migration or permission
+  restructuring.
+
+---
+
+## File Structure
 
 ```
 .
-├── Code.gs   # GAS メインスクリプト（本番用）
-├── Setup.gs  # テスト用ダミーデータ生成スクリプト
-└── README.md # このファイル
+├── Code.gs   # Main script (production use)
+├── Setup.gs  # Test data generation script
+└── README.md # This file
 ```
 
 ---
 
-## 前提条件
+## Prerequisites
 
-| 項目 | 内容 |
-|------|------|
-| GAS 実行アカウント | 対象スライド・両スプレッドシートへの**編集権限**が必要 |
-| チャート種別 | **リンク済み**チャート（Sheetsチャート）のみ対象。静的画像に変換済みのチャートは対象外 |
-| チャートID | 旧スプレッドシートと新スプレッドシートで**同じチャートID**が存在すること（スプレッドシートをコピーした場合は通常一致する） |
+| Requirement | Details |
+|-------------|---------|
+| Account permissions | The account running the script needs **edit access** to the presentation and both spreadsheets |
+| Chart type | Only **linked** Sheets charts are processed. Charts that have been converted to static images are ignored |
+| Chart IDs | The old and new spreadsheets must contain charts with **matching chart IDs** (this is automatically satisfied when the new spreadsheet is created via copy) |
 
 ---
 
-## セットアップ手順
+## Setup
 
-### 1. スクリプトエディタを開く
+### 1. Open the Script Editor
 
-1. 対象の Googleスライドを開く
-2. メニュー「拡張機能」→「Apps Script」をクリック
-3. スクリプトエディタが開く
+1. Open the target Google Slides presentation.
+2. Click **Extensions → Apps Script**.
+3. The script editor opens.
 
-### 2. スクリプトを貼り付ける
+### 2. Paste the Script
 
-1. エディタ左のファイル一覧で `コード.gs`（または任意の .gs ファイル）を選択
-2. 既存のコードをすべて削除し、`Code.gs` の内容をそのまま貼り付ける
-3. 「保存」（Ctrl+S）
+1. Select `Code.gs` (or any `.gs` file) in the editor's file list.
+2. Delete the existing code and paste the contents of `Code.gs`.
+3. Save with **Ctrl+S**.
 
-### 3. CONFIG を設定する
+### 3. Configure CONFIG
 
-`Code.gs` の冒頭にある `CONFIG` オブジェクトを編集します。
+Edit the `CONFIG` object at the top of `Code.gs`:
 
 ```javascript
 const CONFIG = {
-  OLD_SPREADSHEET_ID: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', // 置換前（現在参照中）のID
-  NEW_SPREADSHEET_ID: 'yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy', // 置換後（新しい参照先）のID
-  PRESENTATION_ID: '', // 空文字のままでOK（スクリプトが紐付いたスライドを自動参照）
+  OLD_SPREADSHEET_ID: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', // currently referenced spreadsheet
+  NEW_SPREADSHEET_ID: 'yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy', // new spreadsheet to point to
+  PRESENTATION_ID: '', // leave empty to use the presentation the script is bound to
 };
 ```
 
-#### スプレッドシートIDの確認方法
+#### Finding a Spreadsheet ID
 
-スプレッドシートのURLから確認できます：
+The ID appears in the spreadsheet URL:
 
 ```
-https://docs.google.com/spreadsheets/d/<スプレッドシートID>/edit
+https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit
 ```
 
-`/d/` と `/edit` の間の文字列がIDです。
+Copy the string between `/d/` and `/edit`.
 
-#### PRESENTATION_ID について
+#### PRESENTATION_ID
 
-- **空文字（デフォルト）**: スクリプトを紐付けたプレゼンテーションを対象にします
-- **IDを指定**: 別のプレゼンテーションを対象にしたい場合に設定します
-  - プレゼンテーションのURLの `https://docs.google.com/presentation/d/<ID>/edit` から取得
+- **Leave empty (default)**: the script targets the presentation it is bound to.
+- **Set an ID**: use this when targeting a presentation other than the one the
+  script is bound to. Find the ID in the presentation URL:
+  `https://docs.google.com/presentation/d/<ID>/edit`
 
 ---
 
-## 実行方法
+## Running the Script
 
-### 方法A：カスタムメニューから実行（推奨）
+### Option A: Custom Menu (recommended)
 
-スライドを再読み込みすると、メニューバーに「チャート置換」が追加されます。
+After reloading the presentation, a **Replace Charts** menu appears in the
+menu bar.
 
-| メニュー項目 | 内容 |
-|------------|------|
-| ドライラン（置換対象の確認） | 実際の置換は行わず、対象チャートの一覧を表示する |
-| チャート参照先を置換する | 実際に置換を実行する |
+| Menu item | What it does |
+|-----------|-------------|
+| Dry run (preview targets) | Lists charts that would be replaced, without making any changes |
+| Replace chart sources | Runs the actual replacement |
 
-> **ヒント**: 初回はかならず「ドライラン」で対象を確認してから「置換する」を実行してください。
+> **Tip**: Always run a dry run first to verify the target charts before
+> committing to the replacement.
 
-### 方法B：スクリプトエディタから直接実行
+### Option B: Script Editor
 
-1. スクリプトエディタの上部ドロップダウンで実行する関数を選択
-   - `dryRun`：ドライラン
-   - `replaceChartSources`：本番実行
-2. 「実行」ボタン（▶）をクリック
-3. 初回実行時は権限の承認ダイアログが表示されるので「許可」する
+1. Select the function you want to run from the **dropdown at the top** of the
+   editor, then click the **Run** button (▶).
 
----
+   | What you want to do | Function to select |
+   |--------------------|--------------------|
+   | Preview targets | `dryRun` |
+   | Run replacement | `replaceChartSources` |
 
-## 実行結果の確認
+   > **Note**: `onOpen` is a trigger function that runs automatically when the
+   > presentation is opened — do not select it manually. Running it from the
+   > editor produces a `Cannot call SlidesApp.getUi() from this context` error,
+   > which is expected behavior.
 
-実行後、スクリプトエディタの「実行ログ」（表示 → ログ）に詳細が出力されます。
-
-```
-[置換レポート]
-✅ 置換完了: 5 件
-⏭️ スキップ（参照先が異なる）: 2 件
-⚠️ 新スプレッドシートでチャートが見つからなかったもの:
-  • スライド 3、チャートID 987654321: 新スプレッドシートにチャートID 987654321 が見つかりません
-```
+2. On the first run, an authorization dialog will appear — click **Allow**.
 
 ---
 
-## テスト手順（Setup.gs を使った動作確認）
+## Reading the Results
 
-`Setup.gs` を使うと、ダミーデータ入りのスプレッドシートとスライドを自動生成して
-スクリプトの動作を安全に確認できます。
+After execution, full details are written to the **execution log**
+(View → Logs in the script editor).
 
-### Setup.gs のセットアップ
+```
+[Replacement Report]
+✅ Replaced: 5
+⏭️ Skipped (different source): 2
+⚠️ Charts not found in the new spreadsheet:
+  • Slide 3, Chart ID 987654321: chart ID 987654321 not found in the new spreadsheet
+```
 
-1. スクリプトエディタで「ファイルを追加」→「スクリプト」を選択し、`Setup` という名前で追加する
-2. `Setup.gs` の内容を貼り付けて保存する
+---
 
-### テストの流れ
+## Testing with Setup.gs
 
-#### Step 1: テスト環境を生成する
+`Setup.gs` lets you generate a complete set of dummy files and safely verify
+the script's behavior before using it on real data.
 
-`createTestEnvironment()` を実行すると以下の 3 ファイルが Google ドライブに作成されます。
+### Adding Setup.gs to the Project
 
-| ファイル名 | 内容 |
-|-----------|------|
-| `[テスト] 旧スプレッドシート（参照元）` | 月別売上・カテゴリ別・月別達成率の 3 シート、各 1 チャート |
-| `[テスト] 新スプレッドシート（参照先）` | 旧SSのコピー（チャートID同一）＋ 数値・タイトルを更新済み |
-| `[テスト] スライド（チャート参照置換テスト用）` | 旧SSのチャートをリンク済みで 3 枚に埋め込み済み |
+1. In the script editor, click **Add a file → Script** and name it `Setup`.
+2. Paste the contents of `Setup.gs` and save.
 
-実行ログに次のような ID が表示されるので、`Code.gs` の CONFIG に貼り付けます。
+### Step-by-Step Test Workflow
+
+#### Step 1: Generate the test environment
+
+Run `createTestEnvironment()`. Three files are created in Google Drive:
+
+| File name | Contents |
+|-----------|---------|
+| `[Test] Old Spreadsheet (source)` | 3 sheets (Monthly Sales, By Category, Achievement Rate), one chart each |
+| `[Test] New Spreadsheet (target)` | Copy of the old one (chart IDs identical) with updated values and titles |
+| `[Test] Presentation (chart source replacement test)` | 3 slides, each with a chart linked to the old spreadsheet |
+
+The execution log prints the IDs — paste them into `CONFIG` in `Code.gs`:
 
 ```
 OLD_SPREADSHEET_ID: 'xxxxxxxxxxxxxxxxxxxx...'
@@ -145,121 +161,126 @@ NEW_SPREADSHEET_ID: 'yyyyyyyyyyyyyyyyyyyy...'
 PRESENTATION_ID:    'zzzzzzzzzzzzzzzzzzzz...'
 ```
 
-#### Step 2: チャートIDを確認する（任意）
+#### Step 2: Inspect chart IDs (optional)
 
-`listChartIds()` を実行すると、旧SS・新SS・スライドのチャートIDを一覧表示します。
-旧SSと新SSで同じチャートIDが並んでいれば、置換の準備完了です。
+Run `listChartIds()` to display all chart IDs in both spreadsheets and the
+presentation. If the old and new spreadsheets show the same IDs, you are ready
+to proceed.
 
-#### Step 3: ドライランで対象を確認する
+#### Step 3: Dry run
 
-`dryRun()` を実行して、置換対象チャートの一覧を確認します。
+Run `dryRun()` to confirm which charts will be replaced.
 
-#### Step 4: 置換を実行する
+#### Step 4: Replace
 
-`replaceChartSources()` を実行します。
+Run `replaceChartSources()`.
 
-#### Step 5: 置換結果を検証する
+#### Step 5: Verify
 
-`verifyReplacement()` を実行すると、スライド内の全チャートが
-新スプレッドシートを参照しているかどうかを確認できます。
+Run `verifyReplacement()` to check that every chart in the presentation now
+references the new spreadsheet.
 
 ```
-チャート確認結果（計 3 件）:
+Verification results (3 chart(s)):
 
-  スライド1 / チャートID 123456789: ✅ 新SS（置換済み）
-  スライド2 / チャートID 234567890: ✅ 新SS（置換済み）
-  スライド3 / チャートID 345678901: ✅ 新SS（置換済み）
+  Slide 1 / Chart ID 123456789: ✅ New SS (replaced)
+  Slide 2 / Chart ID 234567890: ✅ New SS (replaced)
+  Slide 3 / Chart ID 345678901: ✅ New SS (replaced)
 ```
 
-#### Step 6: テスト用ファイルを削除する
+#### Step 6: Clean up
 
-`cleanupTestFiles()` を実行すると、生成した 3 ファイルをゴミ箱へ移動します。
-その後、`Code.gs` の CONFIG も手動でリセットしてください。
+Run `cleanupTestFiles()` to move the 3 test files to trash, then manually
+reset `CONFIG` in `Code.gs`.
 
-### Setup.gs の関数一覧
+### Setup.gs Function Reference
 
-| 関数名 | 説明 |
-|--------|------|
-| `createTestEnvironment()` | 旧SS・新SS・テスト用スライドを一括生成し、ID をログ表示する |
-| `verifyReplacement()` | 置換後のスライドを検査し、参照先を確認する |
-| `cleanupTestFiles()` | 生成したテスト用ファイルをゴミ箱へ移動する |
-| `listChartIds()` | 旧SS・新SS・スライドのチャートIDを一覧表示する（デバッグ用） |
-
----
-
-## 注意事項
-
-### チャートIDの一致について
-
-置換処理は「旧スプレッドシートと新スプレッドシートで**同じチャートID**が存在する」ことを前提に動作します。
-
-- スプレッドシートを**コピー**して作成した場合：チャートIDは通常一致します ✅
-- 新スプレッドシートにチャートを手動で作成しなおした場合：IDが変わるため見つからない場合があります ⚠️
-
-### グループ内のチャートについて
-
-グループの直下にあるチャートは処理対象に含まれます。
-ただし、グループのネストが2階層以上になっている場合は処理されません。
-その場合はグループを解除してから実行してください。
-
-### 置換後のチャートについて
-
-- 置換後のチャートは新スプレッドシートへの**リンク済みチャート**として挿入されます
-- 位置・サイズは置換前と同じ値が維持されます
-- チャートのスタイル（タイトル、凡例など）は新スプレッドシート側のチャート設定に依存します
-
-### 元に戻す方法
-
-GAS による変更はスライドの「元に戻す」（Ctrl+Z）では戻せません。
-実行前にプレゼンテーションのバックアップ（コピーを作成）を取ることを推奨します。
+| Function | Description |
+|----------|-------------|
+| `createTestEnvironment()` | Generates old SS, new SS, and test presentation; logs all IDs |
+| `verifyReplacement()` | Inspects the presentation and reports each chart's current source |
+| `cleanupTestFiles()` | Moves generated test files to trash |
+| `listChartIds()` | Lists all chart IDs across both spreadsheets and the presentation (debug) |
 
 ---
 
-## トラブルシューティング
+## Important Notes
 
-| 症状 | 確認ポイント |
-|------|------------|
-| 「プレゼンテーションを開けませんでした」 | `PRESENTATION_ID` が正しいか、または空文字になっているか確認 |
-| 「スプレッドシートを開けませんでした」 | IDが正しいか、実行アカウントがスプレッドシートにアクセスできるか確認 |
-| 置換件数が 0 件 | `OLD_SPREADSHEET_ID` が実際の参照先IDと一致しているか確認（ドライランで対象チャートを確認） |
-| チャートが見つからない | 新スプレッドシートに同じチャートIDのチャートが存在するか確認 |
-| 権限エラー | GAS の実行アカウントに両スプレッドシートとスライドの編集権限があるか確認 |
+### Chart ID Matching
+
+The replacement relies on the old and new spreadsheets having **identical chart
+IDs**.
+
+- Spreadsheet **created via copy**: chart IDs are preserved ✅
+- Charts **manually recreated** in the new spreadsheet: IDs will differ and
+  those charts will not be found ⚠️
+
+### Charts Inside Groups
+
+Charts that are direct children of a group are included in the replacement.
+Charts nested more than one level deep inside groups are not processed — ungroup
+them first if needed.
+
+### After Replacement
+
+- Replaced charts are inserted as **linked** Sheets charts pointing to the new
+  spreadsheet.
+- Position and size are preserved exactly.
+- Chart appearance (title, legend, etc.) reflects the chart settings in the
+  new spreadsheet.
+
+### Undo
+
+Changes made by GAS cannot be undone with **Ctrl+Z** in Slides. Make a backup
+copy of the presentation before running the replacement.
 
 ---
 
-## 関数リファレンス
+## Troubleshooting
+
+| Symptom | What to check |
+|---------|---------------|
+| "Could not open the presentation" | Verify `PRESENTATION_ID` is correct, or leave it empty |
+| "Could not open the spreadsheet" | Verify the ID is correct and the account has access |
+| Replaced count is 0 | Confirm `OLD_SPREADSHEET_ID` matches the actual source (use dry run to inspect) |
+| Chart not found in new spreadsheet | Confirm the new spreadsheet has a chart with the same chart ID |
+| Permission error | Ensure the account running the script has edit access to both spreadsheets and the presentation |
+
+---
+
+## Function Reference
 
 ### Code.gs
 
-| 関数名 | 種別 | 説明 |
-|--------|------|------|
-| `onOpen()` | トリガー | スライドを開いたときにカスタムメニューを追加する |
-| `replaceChartSources()` | 公開 | チャート参照先を一括置換するメイン関数 |
-| `dryRun()` | 公開 | 置換対象チャートの一覧を表示する（置換は行わない） |
-| `_processSlide()` | 内部 | 1枚のスライドを処理する |
-| `_collectSheetsCharts()` | 内部 | スライドから SheetsChart 要素を収集する |
-| `_replaceChart()` | 内部 | 個別チャートの置換処理 |
-| `_findChartById()` | 内部 | スプレッドシート内からチャートIDで検索する |
-| `_validateConfig()` | 内部 | CONFIG のバリデーション |
-| `_openPresentation()` | 内部 | プレゼンテーションを開く |
-| `_openSpreadsheet()` | 内部 | スプレッドシートを開く |
-| `_showReport()` | 内部 | 実行結果レポートを表示する |
-| `_alert()` | 内部 | アラートダイアログを表示する |
+| Function | Type | Description |
+|----------|------|-------------|
+| `onOpen()` | trigger | Adds the custom menu when the presentation is opened |
+| `replaceChartSources()` | public | Main function — bulk-replaces chart sources |
+| `dryRun()` | public | Lists replacement targets without making any changes |
+| `_processSlide()` | internal | Processes all charts on a single slide |
+| `_collectSheetsCharts()` | internal | Collects SheetsChart elements from a slide |
+| `_replaceChart()` | internal | Handles replacement for a single chart element |
+| `_findChartById()` | internal | Searches a spreadsheet for a chart by ID |
+| `_validateConfig()` | internal | Validates CONFIG values |
+| `_openPresentation()` | internal | Opens the presentation |
+| `_openSpreadsheet()` | internal | Opens a spreadsheet |
+| `_showReport()` | internal | Displays the replacement summary |
+| `_alert()` | internal | Shows an alert dialog |
 
 ### Setup.gs
 
-| 関数名 | 種別 | 説明 |
-|--------|------|------|
-| `createTestEnvironment()` | 公開 | 旧SS・新SS・テスト用スライドを一括生成する |
-| `verifyReplacement()` | 公開 | 置換後のスライドを検査し、参照先を確認する |
-| `cleanupTestFiles()` | 公開 | テスト用ファイルをゴミ箱へ移動する |
-| `listChartIds()` | 公開 | 旧SS・新SS・スライドのチャートIDを一覧表示する |
-| `_createOldSpreadsheet()` | 内部 | 旧スプレッドシートを生成する |
-| `_createNewSpreadsheet()` | 内部 | 旧SSをコピーして新スプレッドシートを生成する |
-| `_createTestPresentation()` | 内部 | テスト用プレゼンテーションを生成する |
+| Function | Type | Description |
+|----------|------|-------------|
+| `createTestEnvironment()` | public | Generates old SS, new SS, and test presentation |
+| `verifyReplacement()` | public | Checks each chart's source after replacement |
+| `cleanupTestFiles()` | public | Moves test files to trash |
+| `listChartIds()` | public | Lists chart IDs across both spreadsheets and the presentation |
+| `_createOldSpreadsheet()` | internal | Creates the old spreadsheet with dummy data |
+| `_createNewSpreadsheet()` | internal | Copies the old SS and updates its data |
+| `_createTestPresentation()` | internal | Creates the test presentation |
 
 ---
 
-## ライセンス
+## License
 
 MIT License

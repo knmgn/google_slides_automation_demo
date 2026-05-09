@@ -1,49 +1,49 @@
 // =============================================================================
-// Googleスライド チャート参照先一括置換スクリプト
+// Bulk Replace Chart Sources in Google Slides
 // =============================================================================
-// 使い方:
-//   1. CONFIG の OLD_SPREADSHEET_ID・NEW_SPREADSHEET_ID を設定する
-//   2. スクリプトエディタの「実行」メニューから replaceChartSources() を実行する
-//      または、スライドのメニュー「チャート置換」から操作する
+// Usage:
+//   1. Set OLD_SPREADSHEET_ID and NEW_SPREADSHEET_ID in CONFIG below.
+//   2. Run replaceChartSources() from the script editor's Run menu,
+//      or use the "Replace Charts" menu in the Slides UI.
 // =============================================================================
 
-/** ユーザー設定 */
+/** User configuration */
 const CONFIG = {
-  /** 置換前スプレッドシートのID（現在チャートが参照しているスプレッドシート） */
+  /** ID of the spreadsheet currently referenced by the charts (the one to replace). */
   OLD_SPREADSHEET_ID: 'YOUR_OLD_SPREADSHEET_ID',
 
-  /** 置換後スプレッドシートのID（新しく参照させたいスプレッドシート） */
+  /** ID of the new spreadsheet to redirect all charts to. */
   NEW_SPREADSHEET_ID: 'YOUR_NEW_SPREADSHEET_ID',
 
   /**
-   * 対象プレゼンテーションのID。
-   * 空文字列の場合、スクリプトが紐付いているプレゼンテーションを自動で使用する。
+   * ID of the target presentation.
+   * If left empty, the script uses the presentation it is bound to.
    */
   PRESENTATION_ID: '',
 };
 
 // =============================================================================
-// UI メニュー
+// UI Menu
 // =============================================================================
 
-/** スライドを開いたときにカスタムメニューを追加する */
+/** Adds a custom menu to the Slides UI when the presentation is opened. */
 function onOpen() {
   SlidesApp.getUi()
-    .createMenu('チャート置換')
-    .addItem('ドライラン（置換対象の確認）', 'dryRun')
+    .createMenu('Replace Charts')
+    .addItem('Dry run (preview targets)', 'dryRun')
     .addSeparator()
-    .addItem('チャート参照先を置換する', 'replaceChartSources')
+    .addItem('Replace chart sources', 'replaceChartSources')
     .addToUi();
 }
 
 // =============================================================================
-// メイン処理
+// Main Functions
 // =============================================================================
 
 /**
- * スライド内のすべてのリンク済みチャートについて、
- * OLD_SPREADSHEET_ID を参照しているものを NEW_SPREADSHEET_ID へ一括置換する。
- * チャートの位置・サイズは元のまま維持される。
+ * Scans all linked Sheets charts in the presentation and re-links those
+ * referencing OLD_SPREADSHEET_ID to NEW_SPREADSHEET_ID.
+ * Chart position and size are preserved.
  */
 function replaceChartSources() {
   const { OLD_SPREADSHEET_ID: oldId, NEW_SPREADSHEET_ID: newId, PRESENTATION_ID: presId } = CONFIG;
@@ -66,14 +66,14 @@ function replaceChartSources() {
 }
 
 /**
- * 実際の置換を行わず、置換対象となるチャートの一覧をログとアラートで表示する。
- * 本番実行前の確認に使用する。
+ * Lists all charts that would be replaced without making any changes.
+ * Use this to verify targets before running the actual replacement.
  */
 function dryRun() {
   const { OLD_SPREADSHEET_ID: oldId, PRESENTATION_ID: presId } = CONFIG;
 
   if (oldId === 'YOUR_OLD_SPREADSHEET_ID') {
-    _alert('設定エラー', 'CONFIG の OLD_SPREADSHEET_ID を設定してください。');
+    _alert('Config Error', 'Please set OLD_SPREADSHEET_ID in CONFIG.');
     return;
   }
 
@@ -86,33 +86,33 @@ function dryRun() {
     _collectSheetsCharts(slide).forEach(({ element }) => {
       const chart = element.asSheetsChart();
       if (chart.getSpreadsheetId() === oldId) {
-        found.push(`スライド ${i + 1}：チャートID = ${chart.getChartId()}`);
+        found.push(`Slide ${i + 1}: Chart ID = ${chart.getChartId()}`);
       }
     });
   });
 
   const msg =
     found.length > 0
-      ? `置換対象チャート ${found.length} 件\n\n${found.join('\n')}`
-      : '置換対象のチャートは見つかりませんでした。\nOLD_SPREADSHEET_ID の設定を確認してください。';
+      ? `Found ${found.length} chart(s) to replace:\n\n${found.join('\n')}`
+      : 'No charts found matching OLD_SPREADSHEET_ID.\nPlease verify the ID in CONFIG.';
 
-  Logger.log('[ドライラン]\n' + msg);
-  _alert('ドライラン結果', msg);
+  Logger.log('[Dry Run]\n' + msg);
+  _alert('Dry Run Results', msg);
 }
 
 // =============================================================================
-// 内部ヘルパー
+// Internal Helpers
 // =============================================================================
 
 /**
- * 1枚のスライドに含まれるすべてのチャート要素を対象に置換処理を行う。
- * グループ直下のチャートも処理するが、グループのネストが深い場合は対応外。
+ * Processes all chart elements on a single slide.
+ * Charts directly inside a group are included, but deeper nesting is not supported.
  *
  * @param {GoogleAppsScript.Slides.Slide} slide
- * @param {number} slideNumber 1始まりのスライド番号（ログ用）
- * @param {string} oldId 置換前スプレッドシートID
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} newSpreadsheet 置換後スプレッドシート
- * @param {Object} results 集計オブジェクト
+ * @param {number} slideNumber 1-based slide number (for logging)
+ * @param {string} oldId Source spreadsheet ID to replace
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} newSpreadsheet Target spreadsheet
+ * @param {Object} results Aggregation object
  */
 function _processSlide(slide, slideNumber, oldId, newSpreadsheet, results) {
   _collectSheetsCharts(slide).forEach(({ element, inGroup }) => {
@@ -128,8 +128,8 @@ function _processSlide(slide, slideNumber, oldId, newSpreadsheet, results) {
 }
 
 /**
- * スライド上の SheetsChart 要素をすべて収集して返す。
- * トップレベル要素とグループ直下の要素を対象にする。
+ * Collects all SheetsChart elements on the slide.
+ * Includes top-level elements and those directly inside a group.
  *
  * @param {GoogleAppsScript.Slides.Slide} slide
  * @returns {{ element: GoogleAppsScript.Slides.PageElement, inGroup: boolean }[]}
@@ -156,29 +156,29 @@ function _collectSheetsCharts(slide) {
 }
 
 /**
- * 指定されたチャート要素を新スプレッドシートのチャートで置換する。
+ * Replaces a single chart element with its counterpart from the new spreadsheet.
  *
  * @param {GoogleAppsScript.Slides.PageElement} element
  * @param {GoogleAppsScript.Slides.SheetsChart} chart
  * @param {number} slideNumber
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} newSpreadsheet
- * @param {boolean} inGroup グループ内要素かどうか（ログ用）
- * @param {Object} results 集計オブジェクト
+ * @param {boolean} inGroup Whether the element is inside a group (for logging)
+ * @param {Object} results Aggregation object
  */
 function _replaceChart(element, chart, slideNumber, newSpreadsheet, inGroup, results) {
   const chartId = chart.getChartId();
-  const label = `スライド ${slideNumber}、チャートID ${chartId}${inGroup ? '（グループ内）' : ''}`;
+  const label = `Slide ${slideNumber}, Chart ID ${chartId}${inGroup ? ' (in group)' : ''}`;
 
   try {
     const sourceChart = _findChartById(newSpreadsheet, chartId);
     if (!sourceChart) {
-      const msg = `${label}: 新スプレッドシートにチャートID ${chartId} が見つかりません`;
+      const msg = `${label}: chart ID ${chartId} not found in the new spreadsheet`;
       Logger.log(msg);
       results.notFound.push(msg);
       return;
     }
 
-    // 位置・サイズを記録してから削除
+    // Record position and size before removing
     const left   = element.getLeft();
     const top    = element.getTop();
     const width  = element.getWidth();
@@ -187,20 +187,20 @@ function _replaceChart(element, chart, slideNumber, newSpreadsheet, inGroup, res
 
     element.remove();
 
-    // 同一位置・サイズで新チャートを挿入（リンク済みとして挿入される）
+    // Re-insert at the same position and size, linked to the new spreadsheet
     slide.insertSheetsChart(sourceChart, left, top, width, height);
 
     results.replaced++;
-    Logger.log(`置換完了: ${label}`);
+    Logger.log(`Replaced: ${label}`);
   } catch (e) {
     const msg = `${label}: ${e.message}`;
-    Logger.log('エラー: ' + msg);
+    Logger.log('Error: ' + msg);
     results.errors.push(msg);
   }
 }
 
 /**
- * スプレッドシート内の全シートを横断してチャートIDで検索する。
+ * Searches all sheets in the spreadsheet for a chart matching the given chart ID.
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
  * @param {number} chartId
@@ -216,83 +216,83 @@ function _findChartById(spreadsheet, chartId) {
 }
 
 // =============================================================================
-// ユーティリティ
+// Utilities
 // =============================================================================
 
 /**
- * CONFIG の基本バリデーション。問題があれば false を返す。
+ * Validates CONFIG. Returns false and shows an alert if something is wrong.
  */
 function _validateConfig(oldId, newId) {
   if (oldId === 'YOUR_OLD_SPREADSHEET_ID' || newId === 'YOUR_NEW_SPREADSHEET_ID') {
-    _alert('設定エラー', 'CONFIG の OLD_SPREADSHEET_ID と NEW_SPREADSHEET_ID を正しく設定してください。');
+    _alert('Config Error', 'Please set both OLD_SPREADSHEET_ID and NEW_SPREADSHEET_ID in CONFIG.');
     return false;
   }
   if (oldId === newId) {
-    _alert('設定エラー', 'OLD_SPREADSHEET_ID と NEW_SPREADSHEET_ID が同じ値です。');
+    _alert('Config Error', 'OLD_SPREADSHEET_ID and NEW_SPREADSHEET_ID must be different.');
     return false;
   }
   return true;
 }
 
 /**
- * プレゼンテーションを開く。失敗した場合は null を返す。
+ * Opens the presentation. Returns null on failure.
  *
- * @param {string} presId プレゼンテーションID（空の場合はアクティブなものを使用）
+ * @param {string} presId Presentation ID. If empty, the active presentation is used.
  * @returns {GoogleAppsScript.Slides.Presentation|null}
  */
 function _openPresentation(presId) {
   try {
     return presId ? SlidesApp.openById(presId) : SlidesApp.getActivePresentation();
   } catch (e) {
-    _alert('エラー', `プレゼンテーションを開けませんでした:\n${e.message}`);
+    _alert('Error', `Could not open the presentation:\n${e.message}`);
     return null;
   }
 }
 
 /**
- * スプレッドシートを開く。失敗した場合は null を返す。
+ * Opens a spreadsheet by ID. Returns null on failure.
  *
- * @param {string} id スプレッドシートID
+ * @param {string} id Spreadsheet ID
  * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet|null}
  */
 function _openSpreadsheet(id) {
   try {
     return SpreadsheetApp.openById(id);
   } catch (e) {
-    _alert('エラー', `スプレッドシートを開けませんでした（ID: ${id}）:\n${e.message}`);
+    _alert('Error', `Could not open the spreadsheet (ID: ${id}):\n${e.message}`);
     return null;
   }
 }
 
 /**
- * 置換結果のサマリーをログとアラートで表示する。
+ * Logs and displays a summary of the replacement results.
  *
  * @param {{ replaced: number, skipped: number, notFound: string[], errors: string[] }} results
  */
 function _showReport(results) {
   const lines = [
-    `✅ 置換完了: ${results.replaced} 件`,
-    `⏭️ スキップ（参照先が異なる）: ${results.skipped} 件`,
+    `✅ Replaced: ${results.replaced}`,
+    `⏭️ Skipped (different source): ${results.skipped}`,
   ];
 
   if (results.notFound.length > 0) {
-    lines.push('\n⚠️ 新スプレッドシートでチャートが見つからなかったもの:');
+    lines.push('\n⚠️ Charts not found in the new spreadsheet:');
     results.notFound.forEach(m => lines.push('  • ' + m));
   }
 
   if (results.errors.length > 0) {
-    lines.push('\n❌ エラーが発生したもの:');
+    lines.push('\n❌ Errors:');
     results.errors.forEach(m => lines.push('  • ' + m));
   }
 
   const msg = lines.join('\n');
-  Logger.log('[置換レポート]\n' + msg);
-  _alert('置換レポート', msg);
+  Logger.log('[Replacement Report]\n' + msg);
+  _alert('Replacement Report', msg);
 }
 
 /**
- * アラートダイアログを表示する。
- * スクリプトエディタから直接実行した場合はUIが使えないため、ログのみ出力する。
+ * Shows an alert dialog. Falls back to log-only output when running
+ * directly from the script editor, where no UI context is available.
  *
  * @param {string} title
  * @param {string} message
@@ -303,6 +303,6 @@ function _alert(title, message) {
     const ui = SlidesApp.getUi();
     ui.alert(title, message, ui.ButtonSet.OK);
   } catch (_) {
-    // スクリプトエディタ直接実行時はUIが利用できないため無視
+    // No UI available when run directly from the script editor
   }
 }
