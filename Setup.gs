@@ -1,18 +1,18 @@
 // =============================================================================
-// テスト用ダミーデータ生成スクリプト
+// Test Data Generation Script
 // =============================================================================
-// このファイルは Code.gs の動作確認専用です。本番環境では不要です。
+// This file is only for verifying Code.gs behavior. Not needed in production.
 //
-// 【使い方】
-//   Step 1. createTestEnvironment() を実行
-//           → 旧SS・新SS・テスト用スライドが自動生成される
-//           → ログに表示される 3 つの ID を Code.gs の CONFIG に設定する
-//   Step 2. replaceChartSources() を実行（Code.gs のメイン処理）
-//   Step 3. verifyReplacement() を実行して置換結果を確認する
-//   Step 4. 確認後、cleanupTestFiles() でテスト用ファイルをゴミ箱へ移動する
+// Usage:
+//   Step 1. Run createTestEnvironment()
+//           → Creates the old SS, new SS, and a test presentation automatically.
+//           → Copy the 3 IDs from the log into CONFIG in Code.gs.
+//   Step 2. Run replaceChartSources() (the main function in Code.gs).
+//   Step 3. Run verifyReplacement() to confirm the results.
+//   Step 4. Run cleanupTestFiles() to move the test files to trash.
 // =============================================================================
 
-/** Script Properties に保存するキー名 */
+/** Script Property keys used for cleanup */
 const _PROP = {
   OLD_SS_ID: 'SETUP_TEST_OLD_SS_ID',
   NEW_SS_ID: 'SETUP_TEST_NEW_SS_ID',
@@ -20,36 +20,38 @@ const _PROP = {
 };
 
 // =============================================================================
-// 公開関数
+// Public Functions
 // =============================================================================
 
 /**
- * テスト用ファイルを一式生成する。
+ * Generates all test files in one shot.
  *
- * 生成物:
- *   - 旧スプレッドシート: 3シート・各1チャート（棒グラフ / 円グラフ / 折れ線グラフ）
- *   - 新スプレッドシート: 旧SSのコピー + 値・タイトル更新（チャートIDは同一）
- *   - テスト用スライド:   旧SSのチャートをリンク済みで3枚のスライドに埋め込み済み
+ * Creates:
+ *   - Old spreadsheet: 3 sheets, one chart each (column / pie / line)
+ *   - New spreadsheet: copy of the old one with updated values and titles
+ *                      (chart IDs are identical due to makeCopy())
+ *   - Test presentation: all 3 charts embedded as linked Sheets charts
+ *                        from the old spreadsheet
  *
- * 実行後、ログ（または画面）に表示された ID を Code.gs の CONFIG へ貼り付けてください。
+ * After running, paste the IDs shown in the log into CONFIG in Code.gs.
  */
 function createTestEnvironment() {
   try {
-    Logger.log('テスト環境を作成中...');
+    Logger.log('Creating test environment...');
 
-    Logger.log('（1/3）旧スプレッドシートを作成中...');
+    Logger.log('(1/3) Creating old spreadsheet...');
     const oldSS = _createOldSpreadsheet();
-    Logger.log('旧スプレッドシート完了: ' + oldSS.getId());
+    Logger.log('Old spreadsheet created: ' + oldSS.getId());
 
-    Logger.log('（2/3）新スプレッドシートを作成中（旧のコピー＋データ更新）...');
+    Logger.log('(2/3) Creating new spreadsheet (copy of old + data update)...');
     const newSS = _createNewSpreadsheet(oldSS);
-    Logger.log('新スプレッドシート完了: ' + newSS.getId());
+    Logger.log('New spreadsheet created: ' + newSS.getId());
 
-    Logger.log('（3/3）テスト用プレゼンテーションを作成中...');
+    Logger.log('(3/3) Creating test presentation...');
     const pres = _createTestPresentation(oldSS);
-    Logger.log('プレゼンテーション完了: ' + pres.getId());
+    Logger.log('Presentation created: ' + pres.getId());
 
-    // クリーンアップ用に ID を保存
+    // Store IDs for later cleanup
     PropertiesService.getScriptProperties().setProperties({
       [_PROP.OLD_SS_ID]: oldSS.getId(),
       [_PROP.NEW_SS_ID]: newSS.getId(),
@@ -57,31 +59,31 @@ function createTestEnvironment() {
     });
 
     const msg = [
-      '=== テスト環境の作成が完了しました ===',
+      '=== Test environment created ===',
       '',
-      '【次のステップ】Code.gs の CONFIG を以下の値に設定してください:',
+      'Next step: update CONFIG in Code.gs with the following IDs:',
       '',
       "  OLD_SPREADSHEET_ID: '" + oldSS.getId() + "'",
       "  NEW_SPREADSHEET_ID: '" + newSS.getId() + "'",
       "  PRESENTATION_ID:    '" + pres.getId() + "'",
       '',
-      '設定後に replaceChartSources() を実行し、',
-      '完了したら verifyReplacement() で結果を確認してください。',
+      'Then run replaceChartSources(), and use',
+      'verifyReplacement() to confirm the results.',
     ].join('\n');
 
     Logger.log(msg);
-    _setupAlert('テスト環境作成完了', msg);
+    _setupAlert('Test Environment Ready', msg);
 
   } catch (e) {
-    const msg = 'テスト環境の作成中にエラーが発生しました:\n' + e.message;
+    const msg = 'An error occurred while creating the test environment:\n' + e.message;
     Logger.log(msg);
-    _setupAlert('エラー', msg);
+    _setupAlert('Error', msg);
   }
 }
 
 /**
- * テスト用プレゼンテーション内のチャートが新スプレッドシートを参照しているか確認する。
- * replaceChartSources() 実行後に呼び出してください。
+ * Checks whether all charts in the test presentation now reference the new
+ * spreadsheet. Call this after running replaceChartSources().
  */
 function verifyReplacement() {
   const props  = PropertiesService.getScriptProperties();
@@ -90,7 +92,7 @@ function verifyReplacement() {
   const newId  = props.getProperty(_PROP.NEW_SS_ID);
 
   if (!presId || !oldId || !newId) {
-    _setupAlert('エラー', 'createTestEnvironment() を先に実行してください。');
+    _setupAlert('Error', 'Please run createTestEnvironment() first.');
     return;
   }
 
@@ -106,25 +108,25 @@ function verifyReplacement() {
       total++;
 
       let status;
-      if      (refId === newId) status = '✅ 新SS（置換済み）';
-      else if (refId === oldId) status = '❌ 旧SS（未置換）';
-      else                      status = '⚠️ 不明 (' + refId.substring(0, 10) + '...)';
+      if      (refId === newId) status = '✅ New SS (replaced)';
+      else if (refId === oldId) status = '❌ Old SS (not replaced)';
+      else                      status = '⚠️ Unknown (' + refId.substring(0, 10) + '...)';
 
-      rows.push('  スライド' + (i + 1) + ' / チャートID ' + chart.getChartId() + ': ' + status);
+      rows.push('  Slide ' + (i + 1) + ' / Chart ID ' + chart.getChartId() + ': ' + status);
     });
   });
 
   const msg = total === 0
-    ? 'チャートが見つかりませんでした。'
-    : 'チャート確認結果（計 ' + total + ' 件）:\n\n' + rows.join('\n');
+    ? 'No charts found.'
+    : 'Verification results (' + total + ' chart(s)):\n\n' + rows.join('\n');
 
   Logger.log('[verifyReplacement]\n' + msg);
-  _setupAlert('置換確認結果', msg);
+  _setupAlert('Verification Results', msg);
 }
 
 /**
- * createTestEnvironment() で生成したファイルをゴミ箱へ移動する。
- * Code.gs の CONFIG も手動でリセットしてください。
+ * Moves all files created by createTestEnvironment() to trash.
+ * Remember to reset CONFIG in Code.gs manually afterward.
  */
 function cleanupTestFiles() {
   const props = PropertiesService.getScriptProperties();
@@ -139,9 +141,9 @@ function cleanupTestFiles() {
     try {
       DriveApp.getFileById(id).setTrashed(true);
       deleted++;
-      Logger.log('ゴミ箱へ移動: ' + id);
+      Logger.log('Moved to trash: ' + id);
     } catch (e) {
-      Logger.log('削除失敗 (ID: ' + id + '): ' + e.message);
+      Logger.log('Failed to delete (ID: ' + id + '): ' + e.message);
     }
   });
 
@@ -149,14 +151,14 @@ function cleanupTestFiles() {
     props.deleteProperty(key);
   });
 
-  const msg = deleted + ' 件のテストファイルをゴミ箱に移動しました。\nCode.gs の CONFIG も手動でリセットしてください。';
+  const msg = deleted + ' test file(s) moved to trash.\nRemember to reset CONFIG in Code.gs manually.';
   Logger.log(msg);
-  _setupAlert('クリーンアップ完了', msg);
+  _setupAlert('Cleanup Complete', msg);
 }
 
 /**
- * Script Properties に保存されているチャートIDと参照先を一覧表示する。
- * 置換前後の状態比較やデバッグに使用する。
+ * Lists all chart IDs and their source spreadsheets for the old SS, new SS,
+ * and test presentation. Useful for comparing IDs before and after replacement.
  */
 function listChartIds() {
   const props  = PropertiesService.getScriptProperties();
@@ -165,40 +167,40 @@ function listChartIds() {
   const presId = props.getProperty(_PROP.PRES_ID);
 
   if (!oldId || !newId) {
-    _setupAlert('エラー', 'createTestEnvironment() を先に実行してください。');
+    _setupAlert('Error', 'Please run createTestEnvironment() first.');
     return;
   }
 
-  const lines = ['=== チャートID 一覧 ===', ''];
+  const lines = ['=== Chart ID List ===', ''];
 
-  // 旧スプレッドシート
-  lines.push('【旧スプレッドシート: ' + oldId + '】');
+  // Old spreadsheet
+  lines.push('[Old Spreadsheet: ' + oldId + ']');
   SpreadsheetApp.openById(oldId).getSheets().forEach(function(sheet) {
     sheet.getCharts().forEach(function(c) {
-      lines.push('  シート「' + sheet.getName() + '」: チャートID = ' + c.getChartId());
+      lines.push('  Sheet "' + sheet.getName() + '": Chart ID = ' + c.getChartId());
     });
   });
 
   lines.push('');
 
-  // 新スプレッドシート
-  lines.push('【新スプレッドシート: ' + newId + '】');
+  // New spreadsheet
+  lines.push('[New Spreadsheet: ' + newId + ']');
   SpreadsheetApp.openById(newId).getSheets().forEach(function(sheet) {
     sheet.getCharts().forEach(function(c) {
-      lines.push('  シート「' + sheet.getName() + '」: チャートID = ' + c.getChartId());
+      lines.push('  Sheet "' + sheet.getName() + '": Chart ID = ' + c.getChartId());
     });
   });
 
   if (presId) {
     lines.push('');
-    lines.push('【プレゼンテーション: ' + presId + '】');
+    lines.push('[Presentation: ' + presId + ']');
     SlidesApp.openById(presId).getSlides().forEach(function(slide, i) {
       slide.getPageElements().forEach(function(el) {
         if (el.getPageElementType() !== SlidesApp.PageElementType.SHEETS_CHART) return;
         const c = el.asSheetsChart();
         lines.push(
-          '  スライド' + (i + 1) + ': チャートID = ' + c.getChartId() +
-          '  参照SS: ' + c.getSpreadsheetId().substring(0, 10) + '...'
+          '  Slide ' + (i + 1) + ': Chart ID = ' + c.getChartId() +
+          '  Source SS: ' + c.getSpreadsheetId().substring(0, 10) + '...'
         );
       });
     });
@@ -206,31 +208,31 @@ function listChartIds() {
 
   const msg = lines.join('\n');
   Logger.log(msg);
-  _setupAlert('チャートID 一覧', msg);
+  _setupAlert('Chart ID List', msg);
 }
 
 // =============================================================================
-// 内部ヘルパー — スプレッドシート作成
+// Internal Helpers — Spreadsheet Creation
 // =============================================================================
 
 /**
- * ダミーデータとチャートを 3 シート分含む旧スプレッドシートを作成して返す。
+ * Creates the old spreadsheet with dummy data and charts across 3 sheets.
  * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
  */
 function _createOldSpreadsheet() {
-  const ss = SpreadsheetApp.create('[テスト] 旧スプレッドシート（参照元）');
+  const ss = SpreadsheetApp.create('[Test] Old Spreadsheet (source)');
 
-  // ---- Sheet 1: 月別売上（棒グラフ） ----
+  // ---- Sheet 1: Monthly Sales (column chart) ----
   const s1 = ss.getActiveSheet();
-  s1.setName('月別売上');
+  s1.setName('Monthly Sales');
   s1.getRange('A1:D7').setValues([
-    ['月',  '商品A', '商品B', '商品C'],
-    ['1月',  120,     95,      60],
-    ['2月',  135,    110,      75],
-    ['3月',  150,    125,      90],
-    ['4月',  165,    140,     105],
-    ['5月',  180,    155,     120],
-    ['6月',  195,    170,     135],
+    ['Month', 'Product A', 'Product B', 'Product C'],
+    ['Jan',    120,          95,           60],
+    ['Feb',    135,         110,           75],
+    ['Mar',    150,         125,           90],
+    ['Apr',    165,         140,          105],
+    ['May',    180,         155,          120],
+    ['Jun',    195,         170,          135],
   ]);
   s1.getRange('A1:D1').setFontWeight('bold').setBackground('#e8f0fe');
 
@@ -239,19 +241,19 @@ function _createOldSpreadsheet() {
       .setChartType(Charts.ChartType.COLUMN)
       .addRange(s1.getRange('A1:D7'))
       .setPosition(9, 1, 0, 0)
-      .setOption('title', '月別売上【旧データ】')
+      .setOption('title', 'Monthly Sales [Old Data]')
       .setOption('legend', { position: 'right' })
       .build()
   );
 
-  // ---- Sheet 2: カテゴリ別（円グラフ） ----
-  const s2 = ss.insertSheet('カテゴリ別');
+  // ---- Sheet 2: By Category (pie chart) ----
+  const s2 = ss.insertSheet('By Category');
   s2.getRange('A1:B5').setValues([
-    ['カテゴリ', '売上金額'],
-    ['食品',     450000],
-    ['衣料品',   320000],
-    ['電子機器', 580000],
-    ['その他',   150000],
+    ['Category',    'Revenue'],
+    ['Food',         450000],
+    ['Apparel',      320000],
+    ['Electronics',  580000],
+    ['Other',        150000],
   ]);
   s2.getRange('A1:B1').setFontWeight('bold').setBackground('#e8f0fe');
 
@@ -260,20 +262,20 @@ function _createOldSpreadsheet() {
       .setChartType(Charts.ChartType.PIE)
       .addRange(s2.getRange('A1:B5'))
       .setPosition(7, 1, 0, 0)
-      .setOption('title', 'カテゴリ別売上【旧データ】')
+      .setOption('title', 'Sales by Category [Old Data]')
       .build()
   );
 
-  // ---- Sheet 3: 月別達成率（折れ線グラフ） ----
-  const s3 = ss.insertSheet('月別達成率');
+  // ---- Sheet 3: Monthly Achievement Rate (line chart) ----
+  const s3 = ss.insertSheet('Achievement Rate');
   s3.getRange('A1:B7').setValues([
-    ['月',  '達成率(%)'],
-    ['1月',  92],
-    ['2月',  88],
-    ['3月', 105],
-    ['4月',  97],
-    ['5月', 110],
-    ['6月', 103],
+    ['Month', 'Achievement Rate (%)'],
+    ['Jan',    92],
+    ['Feb',    88],
+    ['Mar',   105],
+    ['Apr',    97],
+    ['May',   110],
+    ['Jun',   103],
   ]);
   s3.getRange('A1:B1').setFontWeight('bold').setBackground('#e8f0fe');
 
@@ -282,7 +284,7 @@ function _createOldSpreadsheet() {
       .setChartType(Charts.ChartType.LINE)
       .addRange(s3.getRange('A1:B7'))
       .setPosition(9, 1, 0, 0)
-      .setOption('title', '月別目標達成率【旧データ】')
+      .setOption('title', 'Monthly Achievement Rate [Old Data]')
       .setOption('series', { 0: { color: '#e67c73' } })
       .build()
   );
@@ -291,18 +293,18 @@ function _createOldSpreadsheet() {
 }
 
 /**
- * 旧スプレッドシートをコピーして新スプレッドシートを作成する。
- * makeCopy() によりチャートIDが引き継がれ、その後データとタイトルのみ更新する。
+ * Copies the old spreadsheet to create the new one, then updates the data and
+ * chart titles. Chart IDs are preserved by makeCopy().
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} oldSS
  * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
  */
 function _createNewSpreadsheet(oldSS) {
-  const copy  = DriveApp.getFileById(oldSS.getId()).makeCopy('[テスト] 新スプレッドシート（参照先）');
+  const copy  = DriveApp.getFileById(oldSS.getId()).makeCopy('[Test] New Spreadsheet (target)');
   const newSS = SpreadsheetApp.openById(copy.getId());
 
-  // Sheet 1: 月別売上 — 値を微増・タイトル更新
-  const s1 = newSS.getSheetByName('月別売上');
+  // Sheet 1: Monthly Sales — update values and title
+  const s1 = newSS.getSheetByName('Monthly Sales');
   if (s1) {
     s1.getRange('B2:D7').setValues([
       [130, 105,  68],
@@ -312,28 +314,28 @@ function _createNewSpreadsheet(oldSS) {
       [195, 167, 128],
       [210, 182, 143],
     ]);
-    _updateChartTitle(s1, '月別売上【新データ】');
+    _updateChartTitle(s1, 'Monthly Sales [New Data]');
   }
 
-  // Sheet 2: カテゴリ別 — 値更新・タイトル更新
-  const s2 = newSS.getSheetByName('カテゴリ別');
+  // Sheet 2: By Category — update values and title
+  const s2 = newSS.getSheetByName('By Category');
   if (s2) {
     s2.getRange('B2:B5').setValues([[490000], [355000], [630000], [175000]]);
-    _updateChartTitle(s2, 'カテゴリ別売上【新データ】');
+    _updateChartTitle(s2, 'Sales by Category [New Data]');
   }
 
-  // Sheet 3: 月別達成率 — 値更新・タイトル更新
-  const s3 = newSS.getSheetByName('月別達成率');
+  // Sheet 3: Achievement Rate — update values and title
+  const s3 = newSS.getSheetByName('Achievement Rate');
   if (s3) {
     s3.getRange('B2:B7').setValues([[95], [91], [108], [100], [114], [107]]);
-    _updateChartTitle(s3, '月別目標達成率【新データ】');
+    _updateChartTitle(s3, 'Monthly Achievement Rate [New Data]');
   }
 
   return newSS;
 }
 
 /**
- * シート内の最初のチャートのタイトルを更新する。
+ * Updates the title of the first chart on the given sheet.
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @param {string} newTitle
  */
@@ -345,18 +347,18 @@ function _updateChartTitle(sheet, newTitle) {
 }
 
 // =============================================================================
-// 内部ヘルパー — プレゼンテーション作成
+// Internal Helpers — Presentation Creation
 // =============================================================================
 
 /**
- * 旧スプレッドシートのチャートをリンク済みで埋め込んだ
- * テスト用プレゼンテーションを作成して返す。
+ * Creates a test presentation with all charts from the old spreadsheet
+ * embedded as linked Sheets charts.
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} oldSS
  * @returns {GoogleAppsScript.Slides.Presentation}
  */
 function _createTestPresentation(oldSS) {
-  const pres = SlidesApp.create('[テスト] スライド（チャート参照置換テスト用）');
+  const pres = SlidesApp.create('[Test] Presentation (chart source replacement test)');
   const W = pres.getPageWidth();
   const H = pres.getPageHeight();
 
@@ -364,28 +366,28 @@ function _createTestPresentation(oldSS) {
   const LABEL_H   = 36;
   const LABEL_TOP = 8;
 
-  // スライド 1: 月別売上（棒グラフ）
+  // Slide 1: Monthly Sales (column chart)
   const slide1 = pres.getSlides()[0];
   _clearSlide(slide1);
-  _insertChartFromSheet(slide1, oldSS, '月別売上', PADDING, LABEL_TOP + LABEL_H, W - PADDING * 2, H - LABEL_H - PADDING - LABEL_TOP);
-  _addSlideLabel(slide1, '月別売上｜旧スプレッドシート参照中', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
+  _insertChartFromSheet(slide1, oldSS, 'Monthly Sales', PADDING, LABEL_TOP + LABEL_H, W - PADDING * 2, H - LABEL_H - PADDING - LABEL_TOP);
+  _addSlideLabel(slide1, 'Monthly Sales', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
 
-  // スライド 2: カテゴリ別（円グラフ）
+  // Slide 2: By Category (pie chart)
   const slide2 = pres.appendSlide(SlidesApp.PredefinedLayout.BLANK);
   const pieW = W * 0.6;
-  _insertChartFromSheet(slide2, oldSS, 'カテゴリ別', (W - pieW) / 2, LABEL_TOP + LABEL_H, pieW, H - LABEL_H - PADDING - LABEL_TOP);
-  _addSlideLabel(slide2, 'カテゴリ別売上｜旧スプレッドシート参照中', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
+  _insertChartFromSheet(slide2, oldSS, 'By Category', (W - pieW) / 2, LABEL_TOP + LABEL_H, pieW, H - LABEL_H - PADDING - LABEL_TOP);
+  _addSlideLabel(slide2, 'Sales by Category', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
 
-  // スライド 3: 月別達成率（折れ線グラフ）
+  // Slide 3: Monthly Achievement Rate (line chart)
   const slide3 = pres.appendSlide(SlidesApp.PredefinedLayout.BLANK);
-  _insertChartFromSheet(slide3, oldSS, '月別達成率', PADDING, LABEL_TOP + LABEL_H, W - PADDING * 2, H - LABEL_H - PADDING - LABEL_TOP);
-  _addSlideLabel(slide3, '月別目標達成率｜旧スプレッドシート参照中', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
+  _insertChartFromSheet(slide3, oldSS, 'Achievement Rate', PADDING, LABEL_TOP + LABEL_H, W - PADDING * 2, H - LABEL_H - PADDING - LABEL_TOP);
+  _addSlideLabel(slide3, 'Monthly Achievement Rate', W, LABEL_TOP, W - PADDING * 2, LABEL_H);
 
   return pres;
 }
 
 /**
- * 指定シートの最初のチャートをスライドにリンク済みで挿入する。
+ * Inserts the first chart from the named sheet into the slide as a linked Sheets chart.
  */
 function _insertChartFromSheet(slide, ss, sheetName, left, top, width, height) {
   const sheet  = ss.getSheetByName(sheetName);
@@ -396,7 +398,7 @@ function _insertChartFromSheet(slide, ss, sheetName, left, top, width, height) {
 }
 
 /**
- * スライドの既存要素をすべて削除する（デフォルトのプレースホルダを含む）。
+ * Removes all existing elements from the slide, including default placeholders.
  */
 function _clearSlide(slide) {
   slide.getPageElements().forEach(function(el) {
@@ -405,7 +407,7 @@ function _clearSlide(slide) {
 }
 
 /**
- * スライド上部にラベルのテキストボックスを追加する。
+ * Adds a centered label text box at the top of the slide.
  */
 function _addSlideLabel(slide, text, slideWidth, top, width, height) {
   var left = (slideWidth - width) / 2;
@@ -417,11 +419,12 @@ function _addSlideLabel(slide, text, slideWidth, top, width, height) {
 }
 
 // =============================================================================
-// ユーティリティ
+// Utilities
 // =============================================================================
 
 /**
- * アラートを表示する（スクリプトエディタ直接実行時はログのみ）。
+ * Shows an alert dialog. Falls back to log-only output when running
+ * directly from the script editor, where no UI context is available.
  */
 function _setupAlert(title, message) {
   Logger.log('[' + title + ']\n' + message);
