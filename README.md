@@ -6,6 +6,12 @@ spreadsheet ID to a new one.
 
 ---
 
+## Demo
+
+[![Demo Video](https://drive.google.com/thumbnail?id=1CDzUQS9_h-KcKPqf6GEWNEnawF7btuOW&sz=w800)](https://drive.google.com/file/d/1CDzUQS9_h-KcKPqf6GEWNEnawF7btuOW/view)
+
+---
+
 ## Use Cases
 
 - You copied a spreadsheet to create a new environment (production / staging /
