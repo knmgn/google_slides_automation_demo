@@ -26,14 +26,26 @@ const CONFIG = {
 // UI メニュー
 // =============================================================================
 
-/** スライドを開いたときにカスタムメニューを追加する */
+/**
+ * スライドを開いたときにカスタムメニューを追加する。
+ * このトリガーはスライドが開かれたときに自動で呼ばれる。
+ * スクリプトエディタから手動実行した場合は SlidesApp.getUi() が使えないため
+ * エラーを無視して終了する（メニューが追加されないだけで問題ない）。
+ * ※ replaceChartSources() を直接実行したい場合は、ドロップダウンで
+ *    「replaceChartSources」を選択してから「実行」ボタンを押してください。
+ */
 function onOpen() {
-  SlidesApp.getUi()
-    .createMenu('チャート置換')
-    .addItem('ドライラン（置換対象の確認）', 'dryRun')
-    .addSeparator()
-    .addItem('チャート参照先を置換する', 'replaceChartSources')
-    .addToUi();
+  try {
+    SlidesApp.getUi()
+      .createMenu('チャート置換')
+      .addItem('ドライラン（置換対象の確認）', 'dryRun')
+      .addSeparator()
+      .addItem('チャート参照先を置換する', 'replaceChartSources')
+      .addToUi();
+  } catch (e) {
+    // スクリプトエディタや非Slidesコンテキストから実行された場合は無視
+    Logger.log('onOpen: メニューの追加をスキップしました（' + e.message + '）');
+  }
 }
 
 // =============================================================================
