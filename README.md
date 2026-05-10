@@ -8,7 +8,7 @@ spreadsheet ID to a new one.
 
 ## Demo
 
-https://github.com/knmgn/google_slides_automation_demo/raw/refs/heads/main/demo.mp4
+https://github.com/knmgn/google_slides_automation_demo/raw/refs/heads/main/Automated_Chart_Replacer_Demo.mp4
 
 ---
 
